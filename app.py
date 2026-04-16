@@ -1,28 +1,35 @@
 from flask import Flask, render_template, jsonify, request
+import time
 
 app = Flask(__name__)
 
 users = {}
 
+MINING_RATE = 0.5  # coin per detik
+
 @app.route("/")
 def home():
     return render_template("index.html")
 
-@app.route("/mine", methods=["POST"])
-def mine():
+@app.route("/sync", methods=["POST"])
+def sync():
     data = request.json
     user_id = str(data.get("user_id"))
 
     if user_id not in users:
-        users[user_id] = 0
+        users[user_id] = {
+            "balance": 0,
+            "last_time": time.time()
+        }
 
-    users[user_id] += 1
+    now = time.time()
+    last = users[user_id]["last_time"]
 
-    return jsonify({"balance": users[user_id]})
+    # hitung auto mining
+    earned = (now - last) * MINING_RATE
+    users[user_id]["balance"] += earned
+    users[user_id]["last_time"] = now
 
-@app.route("/balance", methods=["POST"])
-def balance():
-    data = request.json
-    user_id = str(data.get("user_id"))
-
-    return jsonify({"balance": users.get(user_id, 0)})
+    return jsonify({
+        "balance": round(users[user_id]["balance"], 2)
+    })
