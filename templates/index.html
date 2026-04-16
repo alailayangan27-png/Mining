@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mining App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: sans-serif;
+            text-align: center;
+            padding-top: 50px;
+        }
+
+        h1 {
+            font-size: 28px;
+        }
+
+        #balance {
+            font-size: 40px;
+            margin: 20px;
+        }
+
+        button {
+            padding: 20px 40px;
+            font-size: 20px;
+            border: none;
+            border-radius: 10px;
+            background: #22c55e;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<h1>⛏ Mining App</h1>
+<div id="balance">0</div>
+
+<button onclick="mine()">TAP TO MINE</button>
+
+<script>
+async function loadBalance() {
+    let res = await fetch('/balance');
+    let data = await res.json();
+    document.getElementById('balance').innerText = data.balance;
+}
+
+async function mine() {
+    let res = await fetch('/mine', {method: 'POST'});
+    let data = await res.json();
+    document.getElementById('balance').innerText = data.balance;
+}
+
+loadBalance();
+</script>
+
+</body>
+</html>
