@@ -2,76 +2,89 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
-    margin: 0;
-    font-family: Arial;
-    background: #0b0f19;
+    margin:0;
+    font-family: Inter, sans-serif;
+    background: #0a0a0a;
     color: white;
 }
 
-/* Header */
-.header {
-    padding: 15px;
-    font-size: 18px;
-    opacity: 0.7;
+/* Layout */
+.container {
+    padding:20px;
 }
 
 /* Balance */
 .balance {
-    font-size: 40px;
-    font-weight: bold;
-    padding: 15px;
+    font-size:42px;
+    font-weight:600;
+}
+
+/* Energy bar */
+.energy {
+    margin-top:10px;
+    height:8px;
+    background:#222;
+    border-radius:10px;
+}
+
+.energy-fill {
+    height:100%;
+    width:0%;
+    background:#00ffae;
+    border-radius:10px;
+}
+
+/* Tap button */
+.tap {
+    width:180px;
+    height:180px;
+    border-radius:50%;
+    margin:40px auto;
+    background: radial-gradient(circle, #00ffae, #005f4b);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    transition:0.1s;
+}
+
+.tap:active {
+    transform:scale(0.9);
 }
 
 /* Card */
 .card {
-    margin: 15px;
-    padding: 15px;
-    background: #111827;
-    border-radius: 15px;
-}
-
-/* Chart */
-canvas {
-    width: 100% !important;
-    height: 200px !important;
-}
-
-/* Mining */
-.miner {
-    text-align: center;
-    margin-top: 20px;
-}
-
-.upgrade {
-    margin-top: 10px;
-    padding: 10px;
-    background: #22c55e;
-    border: none;
-    border-radius: 10px;
-    color: white;
+    margin-top:20px;
+    padding:15px;
+    background:#111;
+    border-radius:15px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header" id="user">Loading...</div>
+<div class="container">
+
+<div id="user"></div>
 
 <div class="balance" id="balance">0</div>
 
-<div class="card">
-    <canvas id="chart"></canvas>
+<div class="energy">
+    <div class="energy-fill" id="energy"></div>
 </div>
 
-<div class="card miner">
-    <div>⛏ Mining Speed: <span id="speed">1</span>x</div>
-    <button class="upgrade" onclick="upgrade()">Upgrade Miner</button>
+<div class="tap" onclick="tap()">TAP</div>
+
+<div class="card">
+    Level: <span id="level">1</span><br><br>
+    <button onclick="upgrade()">Upgrade</button>
+</div>
+
 </div>
 
 <script>
@@ -84,66 +97,53 @@ let user_id = user ? user.id : 1;
 document.getElementById("user").innerText =
     user ? "@" + user.username : "Guest";
 
-/* SYNC */
-async function sync() {
+/* Smooth balance animation */
+let displayBalance = 0;
+
+function animateBalance(target){
+    displayBalance += (target - displayBalance) * 0.2;
+    document.getElementById("balance").innerText = displayBalance.toFixed(2);
+}
+
+/* Sync */
+async function sync(){
     let res = await fetch('/sync', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({user_id})
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user_id})
     });
 
     let data = await res.json();
-    document.getElementById('balance').innerText = data.balance;
-    document.getElementById('speed').innerText = data.speed;
+
+    animateBalance(data.balance);
+
+    document.getElementById("level").innerText = data.level;
+
+    document.getElementById("energy").style.width =
+        data.energy + "%";
 }
 
-/* UPGRADE */
-async function upgrade() {
-    let res = await fetch('/upgrade', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({user_id})
+/* Tap */
+async function tap(){
+    await fetch('/tap',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user_id})
     });
-
-    let data = await res.json();
-    document.getElementById('balance').innerText = data.balance;
-    document.getElementById('speed').innerText = data.speed;
 }
 
-/* AUTO LOOP */
+/* Upgrade */
+async function upgrade(){
+    await fetch('/upgrade',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user_id})
+    });
+}
+
+/* Loop */
 setInterval(sync, 1000);
 sync();
-
-/* CHART */
-let ctx = document.getElementById('chart').getContext('2d');
-
-let chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: [],
-        datasets: [{
-            label: 'Price',
-            data: [],
-            borderWidth: 2
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: {legend: {display: false}}
-    }
-});
-
-async function loadChart() {
-    let res = await fetch('/chart');
-    let data = await res.json();
-
-    chart.data.labels = data.map((_, i) => i);
-    chart.data.datasets[0].data = data;
-    chart.update();
-}
-
-setInterval(loadChart, 3000);
-loadChart();
 </script>
 
 </body>
