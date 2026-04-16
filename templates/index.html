@@ -2,113 +2,139 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mining App</title>
+<title>Crypto Miner</title>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 <style>
 body {
     margin: 0;
-    font-family: Arial;
-    background: linear-gradient(135deg, #0f172a, #020617);
+    font-family: 'Segoe UI', sans-serif;
+    background: radial-gradient(circle at top, #0f172a, #020617);
     color: white;
-    text-align: center;
 }
 
-/* Glass card */
-.card {
-    margin: 40px 20px;
+/* Container */
+.container {
     padding: 20px;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(10px);
+}
+
+/* Header */
+.header {
+    font-size: 20px;
+    opacity: 0.7;
 }
 
 /* Balance */
 .balance {
-    font-size: 45px;
+    font-size: 50px;
     font-weight: bold;
-    margin-top: 10px;
+    margin: 20px 0;
 }
 
-/* Button */
-.mine-btn {
-    margin-top: 40px;
+/* Card */
+.card {
+    background: rgba(255,255,255,0.05);
+    border-radius: 20px;
+    padding: 20px;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 0 30px rgba(0,255,255,0.1);
+}
+
+/* Mining circle */
+.miner {
     width: 200px;
     height: 200px;
     border-radius: 50%;
-    border: none;
-    font-size: 20px;
-    color: white;
-    background: radial-gradient(circle, #22c55e, #15803d);
-    box-shadow: 0 0 40px rgba(34,197,94,0.6);
-    transition: 0.1s;
+    margin: 40px auto;
+    background: radial-gradient(circle, #00f5d4, #0077b6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 0 40px rgba(0,255,255,0.6);
+    animation: pulse 2s infinite;
 }
 
-.mine-btn:active {
-    transform: scale(0.9);
-    box-shadow: 0 0 20px rgba(34,197,94,0.9);
+/* Pulse animation */
+@keyframes pulse {
+    0% { box-shadow: 0 0 20px rgba(0,255,255,0.3); }
+    50% { box-shadow: 0 0 60px rgba(0,255,255,0.8); }
+    100% { box-shadow: 0 0 20px rgba(0,255,255,0.3); }
 }
 
-/* Username */
-.user {
-    opacity: 0.7;
-    margin-top: 5px;
+/* Progress bar */
+.progress {
+    height: 10px;
+    background: #111;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 15px;
+}
+
+.bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #00f5d4, #0ea5e9);
+    transition: width 0.2s;
 }
 </style>
 </head>
 
 <body>
 
-<div class="card">
-    <h2>⚡ Mining Dashboard</h2>
-    <div class="user" id="user"></div>
-    <div class="balance" id="balance">0</div>
-</div>
+<div class="container">
 
-<button class="mine-btn" onclick="mine()">⛏ TAP</button>
+    <div class="header" id="user">Loading...</div>
+
+    <div class="balance" id="balance">0</div>
+
+    <div class="card">
+        <div class="miner">MINING</div>
+
+        <div class="progress">
+            <div class="bar" id="bar"></div>
+        </div>
+    </div>
+
+</div>
 
 <script>
 const tg = window.Telegram.WebApp;
 tg.expand();
 
 const user = tg.initDataUnsafe?.user;
+let user_id = user ? user.id : 1;
 
-// tampilkan user
+// tampilkan username
 document.getElementById("user").innerText =
     user ? "@" + user.username : "Guest";
 
-async function loadBalance() {
-    let res = await fetch('/balance', {
+// auto sync ke backend
+async function sync() {
+    let res = await fetch('/sync', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            user_id: user?.id
-        })
+        body: JSON.stringify({user_id})
     });
 
     let data = await res.json();
     document.getElementById('balance').innerText = data.balance;
 }
 
-async function mine() {
-    // animasi getar kecil
-    navigator.vibrate(50);
+// progress animation
+let progress = 0;
+setInterval(() => {
+    progress += 2;
+    if (progress > 100) progress = 0;
+    document.getElementById("bar").style.width = progress + "%";
+}, 100);
 
-    let res = await fetch('/mine', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            user_id: user?.id
-        })
-    });
-
-    let data = await res.json();
-    document.getElementById('balance').innerText = data.balance;
-}
+// auto mining tiap 1 detik
+setInterval(sync, 1000);
 
 // load awal
-loadBalance();
+sync();
 </script>
 
 </body>
