@@ -1,13 +1,14 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, request, jsonify
 import time
+import math
 
 app = Flask(__name__)
 
 users = {}
 
 MAX_ENERGY = 100
-ENERGY_REGEN = 5   # per second
-MINING_POWER = 0.05
+REGEN_RATE = 8          # lebih cepat tapi curve
+BASE_RATE = 0.03        # passive income
 
 @app.route("/")
 def home():
@@ -21,56 +22,61 @@ def sync():
         users[user_id] = {
             "balance": 0,
             "energy": MAX_ENERGY,
-            "last_time": time.time(),
-            "level": 1
+            "last": time.time(),
+            "level": 1,
+            "multiplier": 1.0
         }
 
-    user = users[user_id]
+    u = users[user_id]
 
     now = time.time()
-    elapsed = now - user["last_time"]
+    dt = now - u["last"]
 
-    # regen energy
-    user["energy"] = min(MAX_ENERGY, user["energy"] + elapsed * ENERGY_REGEN)
+    # ⚡ NON-LINEAR ENERGY REGEN
+    regen = REGEN_RATE * (1 - (u["energy"]/MAX_ENERGY)**2)
+    u["energy"] = min(MAX_ENERGY, u["energy"] + regen * dt)
 
-    # mining otomatis (idle)
-    mined = elapsed * MINING_POWER * user["level"]
-    user["balance"] += mined
+    # ⛏ PASSIVE MINING
+    passive = dt * BASE_RATE * u["level"] * u["multiplier"]
+    u["balance"] += passive
 
-    user["last_time"] = now
+    u["last"] = now
 
     return jsonify({
-        "balance": round(user["balance"], 2),
-        "energy": int(user["energy"]),
-        "level": user["level"]
+        "balance": round(u["balance"], 3),
+        "energy": int(u["energy"]),
+        "level": u["level"]
     })
 
 @app.route("/tap", methods=["POST"])
 def tap():
     user_id = str(request.json.get("user_id"))
-    user = users[user_id]
+    u = users[user_id]
 
-    if user["energy"] > 1:
-        user["energy"] -= 2
-        user["balance"] += 1 * user["level"]
+    if u["energy"] > 5:
+        u["energy"] -= 5
 
-    return jsonify({
-        "balance": round(user["balance"], 2),
-        "energy": int(user["energy"])
-    })
+        # burst reward (lebih besar dari idle)
+        reward = (2 + math.sqrt(u["level"])) * u["multiplier"]
+        u["balance"] += reward
+
+        return jsonify({"gain": round(reward,2)})
+
+    return jsonify({"gain": 0})
 
 @app.route("/upgrade", methods=["POST"])
 def upgrade():
     user_id = str(request.json.get("user_id"))
-    user = users[user_id]
+    u = users[user_id]
 
-    cost = user["level"] * 50
+    cost = (u["level"] ** 2) * 25
 
-    if user["balance"] >= cost:
-        user["balance"] -= cost
-        user["level"] += 1
+    if u["balance"] >= cost:
+        u["balance"] -= cost
+        u["level"] += 1
+        u["multiplier"] += 0.2
 
     return jsonify({
-        "balance": round(user["balance"], 2),
-        "level": user["level"]
+        "level": u["level"],
+        "balance": round(u["balance"],2)
     })
