@@ -2,8 +2,7 @@ from flask import Flask, render_template, jsonify, request
 
 app = Flask(__name__)
 
-# fake database (sementara)
-balance = 0
+users = {}
 
 @app.route("/")
 def home():
@@ -11,10 +10,19 @@ def home():
 
 @app.route("/mine", methods=["POST"])
 def mine():
-    global balance
-    balance += 1
-    return jsonify({"balance": balance})
+    data = request.json
+    user_id = str(data.get("user_id"))
 
-@app.route("/balance")
-def get_balance():
-    return jsonify({"balance": balance})
+    if user_id not in users:
+        users[user_id] = 0
+
+    users[user_id] += 1
+
+    return jsonify({"balance": users[user_id]})
+
+@app.route("/balance", methods=["POST"])
+def balance():
+    data = request.json
+    user_id = str(data.get("user_id"))
+
+    return jsonify({"balance": users.get(user_id, 0)})
