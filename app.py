@@ -7,7 +7,7 @@ users = {}
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return "APP RUNNING ✅"
 
 @app.route("/balance", methods=["POST"])
 def balance():
@@ -28,8 +28,3 @@ def mine():
     users[user_id] += 10
 
     return jsonify({"balance": users[user_id]})
-
-# IMPORTANT for Railway
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
