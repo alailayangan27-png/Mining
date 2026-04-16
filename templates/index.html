@@ -2,101 +2,76 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Crypto Miner</title>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
     margin: 0;
-    font-family: 'Segoe UI', sans-serif;
-    background: radial-gradient(circle at top, #0f172a, #020617);
+    font-family: Arial;
+    background: #0b0f19;
     color: white;
-}
-
-/* Container */
-.container {
-    padding: 20px;
 }
 
 /* Header */
 .header {
-    font-size: 20px;
+    padding: 15px;
+    font-size: 18px;
     opacity: 0.7;
 }
 
 /* Balance */
 .balance {
-    font-size: 50px;
+    font-size: 40px;
     font-weight: bold;
-    margin: 20px 0;
+    padding: 15px;
 }
 
 /* Card */
 .card {
-    background: rgba(255,255,255,0.05);
-    border-radius: 20px;
-    padding: 20px;
-    backdrop-filter: blur(15px);
-    box-shadow: 0 0 30px rgba(0,255,255,0.1);
+    margin: 15px;
+    padding: 15px;
+    background: #111827;
+    border-radius: 15px;
 }
 
-/* Mining circle */
+/* Chart */
+canvas {
+    width: 100% !important;
+    height: 200px !important;
+}
+
+/* Mining */
 .miner {
-    width: 200px;
-    height: 200px;
-    border-radius: 50%;
-    margin: 40px auto;
-    background: radial-gradient(circle, #00f5d4, #0077b6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    box-shadow: 0 0 40px rgba(0,255,255,0.6);
-    animation: pulse 2s infinite;
+    text-align: center;
+    margin-top: 20px;
 }
 
-/* Pulse animation */
-@keyframes pulse {
-    0% { box-shadow: 0 0 20px rgba(0,255,255,0.3); }
-    50% { box-shadow: 0 0 60px rgba(0,255,255,0.8); }
-    100% { box-shadow: 0 0 20px rgba(0,255,255,0.3); }
-}
-
-/* Progress bar */
-.progress {
-    height: 10px;
-    background: #111;
+.upgrade {
+    margin-top: 10px;
+    padding: 10px;
+    background: #22c55e;
+    border: none;
     border-radius: 10px;
-    overflow: hidden;
-    margin-top: 15px;
-}
-
-.bar {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, #00f5d4, #0ea5e9);
-    transition: width 0.2s;
+    color: white;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="header" id="user">Loading...</div>
 
-    <div class="header" id="user">Loading...</div>
+<div class="balance" id="balance">0</div>
 
-    <div class="balance" id="balance">0</div>
+<div class="card">
+    <canvas id="chart"></canvas>
+</div>
 
-    <div class="card">
-        <div class="miner">MINING</div>
-
-        <div class="progress">
-            <div class="bar" id="bar"></div>
-        </div>
-    </div>
-
+<div class="card miner">
+    <div>⛏ Mining Speed: <span id="speed">1</span>x</div>
+    <button class="upgrade" onclick="upgrade()">Upgrade Miner</button>
 </div>
 
 <script>
@@ -106,11 +81,10 @@ tg.expand();
 const user = tg.initDataUnsafe?.user;
 let user_id = user ? user.id : 1;
 
-// tampilkan username
 document.getElementById("user").innerText =
     user ? "@" + user.username : "Guest";
 
-// auto sync ke backend
+/* SYNC */
 async function sync() {
     let res = await fetch('/sync', {
         method: 'POST',
@@ -120,21 +94,56 @@ async function sync() {
 
     let data = await res.json();
     document.getElementById('balance').innerText = data.balance;
+    document.getElementById('speed').innerText = data.speed;
 }
 
-// progress animation
-let progress = 0;
-setInterval(() => {
-    progress += 2;
-    if (progress > 100) progress = 0;
-    document.getElementById("bar").style.width = progress + "%";
-}, 100);
+/* UPGRADE */
+async function upgrade() {
+    let res = await fetch('/upgrade', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({user_id})
+    });
 
-// auto mining tiap 1 detik
+    let data = await res.json();
+    document.getElementById('balance').innerText = data.balance;
+    document.getElementById('speed').innerText = data.speed;
+}
+
+/* AUTO LOOP */
 setInterval(sync, 1000);
-
-// load awal
 sync();
+
+/* CHART */
+let ctx = document.getElementById('chart').getContext('2d');
+
+let chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [{
+            label: 'Price',
+            data: [],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {legend: {display: false}}
+    }
+});
+
+async function loadChart() {
+    let res = await fetch('/chart');
+    let data = await res.json();
+
+    chart.data.labels = data.map((_, i) => i);
+    chart.data.datasets[0].data = data;
+    chart.update();
+}
+
+setInterval(loadChart, 3000);
+loadChart();
 </script>
 
 </body>
