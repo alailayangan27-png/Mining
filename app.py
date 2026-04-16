@@ -1,12 +1,13 @@
 from flask import Flask, render_template, jsonify, request
 import time
-import random
 
 app = Flask(__name__)
 
 users = {}
 
-MINING_BASE = 0.2
+MAX_ENERGY = 100
+ENERGY_REGEN = 5   # per second
+MINING_POWER = 0.05
 
 @app.route("/")
 def home():
@@ -14,14 +15,14 @@ def home():
 
 @app.route("/sync", methods=["POST"])
 def sync():
-    data = request.json
-    user_id = str(data.get("user_id"))
+    user_id = str(request.json.get("user_id"))
 
     if user_id not in users:
         users[user_id] = {
             "balance": 0,
+            "energy": MAX_ENERGY,
             "last_time": time.time(),
-            "speed": 1
+            "level": 1
         }
 
     user = users[user_id]
@@ -29,41 +30,47 @@ def sync():
     now = time.time()
     elapsed = now - user["last_time"]
 
-    earned = elapsed * MINING_BASE * user["speed"]
-    user["balance"] += earned
+    # regen energy
+    user["energy"] = min(MAX_ENERGY, user["energy"] + elapsed * ENERGY_REGEN)
+
+    # mining otomatis (idle)
+    mined = elapsed * MINING_POWER * user["level"]
+    user["balance"] += mined
+
     user["last_time"] = now
 
     return jsonify({
         "balance": round(user["balance"], 2),
-        "speed": user["speed"]
+        "energy": int(user["energy"]),
+        "level": user["level"]
+    })
+
+@app.route("/tap", methods=["POST"])
+def tap():
+    user_id = str(request.json.get("user_id"))
+    user = users[user_id]
+
+    if user["energy"] > 1:
+        user["energy"] -= 2
+        user["balance"] += 1 * user["level"]
+
+    return jsonify({
+        "balance": round(user["balance"], 2),
+        "energy": int(user["energy"])
     })
 
 @app.route("/upgrade", methods=["POST"])
 def upgrade():
-    data = request.json
-    user_id = str(data.get("user_id"))
-
+    user_id = str(request.json.get("user_id"))
     user = users[user_id]
 
-    cost = user["speed"] * 10
+    cost = user["level"] * 50
 
     if user["balance"] >= cost:
         user["balance"] -= cost
-        user["speed"] += 1
+        user["level"] += 1
 
     return jsonify({
         "balance": round(user["balance"], 2),
-        "speed": user["speed"]
+        "level": user["level"]
     })
-
-@app.route("/chart")
-def chart():
-    # generate fake price data
-    data = []
-    price = 100
-
-    for i in range(30):
-        price += random.uniform(-2, 2)
-        data.append(round(price, 2))
-
-    return jsonify(data)
