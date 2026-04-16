@@ -5,86 +5,106 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 <style>
-body {
+body{
     margin:0;
+    background:#05070d;
     font-family: Inter, sans-serif;
-    background: #0a0a0a;
-    color: white;
+    color:white;
 }
 
-/* Layout */
-.container {
+/* HEADER */
+.top{
     padding:20px;
+    font-size:14px;
+    opacity:0.6;
 }
 
-/* Balance */
-.balance {
-    font-size:42px;
-    font-weight:600;
+/* BALANCE */
+.balance{
+    font-size:48px;
+    font-weight:700;
+    padding:0 20px;
 }
 
-/* Energy bar */
-.energy {
-    margin-top:10px;
-    height:8px;
-    background:#222;
+/* ENERGY BAR */
+.energy{
+    margin:15px 20px;
+    height:6px;
+    background:#111;
     border-radius:10px;
 }
-
-.energy-fill {
+.energy-fill{
     height:100%;
     width:0%;
-    background:#00ffae;
+    background:linear-gradient(90deg,#00ffa3,#00c3ff);
     border-radius:10px;
 }
 
-/* Tap button */
-.tap {
-    width:180px;
-    height:180px;
-    border-radius:50%;
+/* MINER CORE */
+.core{
+    width:200px;
+    height:200px;
     margin:40px auto;
-    background: radial-gradient(circle, #00ffae, #005f4b);
+    border-radius:50%;
+    background: radial-gradient(circle,#00ffa3,#002f2a);
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:22px;
-    transition:0.1s;
+    font-size:20px;
+    box-shadow:0 0 60px rgba(0,255,150,0.3);
+    transition:.1s;
 }
 
-.tap:active {
-    transform:scale(0.9);
+.core:active{
+    transform:scale(0.92);
 }
 
-/* Card */
-.card {
-    margin-top:20px;
+/* FLOAT TEXT */
+.float{
+    position:absolute;
+    color:#00ffa3;
+    font-weight:bold;
+    animation: floatUp 1s forwards;
+}
+@keyframes floatUp{
+    to{
+        transform:translateY(-50px);
+        opacity:0;
+    }
+}
+
+/* CARD */
+.card{
+    margin:20px;
     padding:15px;
-    background:#111;
-    border-radius:15px;
+    background:#0f141c;
+    border-radius:12px;
+}
+button{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    background:#00ffa3;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="top" id="user"></div>
 
-<div id="user"></div>
-
-<div class="balance" id="balance">0</div>
+<div class="balance" id="balance">0.000</div>
 
 <div class="energy">
     <div class="energy-fill" id="energy"></div>
 </div>
 
-<div class="tap" onclick="tap()">TAP</div>
+<div class="core" onclick="tap(event)">MINE</div>
 
 <div class="card">
-    Level: <span id="level">1</span><br><br>
+    Level <span id="level">1</span>
     <button onclick="upgrade()">Upgrade</button>
-</div>
-
 </div>
 
 <script>
@@ -95,44 +115,53 @@ const user = tg.initDataUnsafe?.user;
 let user_id = user ? user.id : 1;
 
 document.getElementById("user").innerText =
-    user ? "@" + user.username : "Guest";
+    user ? "@"+user.username : "Guest";
 
-/* Smooth balance animation */
-let displayBalance = 0;
-
-function animateBalance(target){
-    displayBalance += (target - displayBalance) * 0.2;
-    document.getElementById("balance").innerText = displayBalance.toFixed(2);
+/* SMOOTH BALANCE */
+let shown = 0;
+function updateBalance(target){
+    shown += (target - shown)*0.15;
+    document.getElementById("balance").innerText = shown.toFixed(3);
 }
 
-/* Sync */
+/* SYNC LOOP */
 async function sync(){
-    let res = await fetch('/sync', {
+    let r = await fetch('/sync',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({user_id})
     });
+    let d = await r.json();
 
-    let data = await res.json();
-
-    animateBalance(data.balance);
-
-    document.getElementById("level").innerText = data.level;
-
-    document.getElementById("energy").style.width =
-        data.energy + "%";
+    updateBalance(d.balance);
+    document.getElementById("level").innerText = d.level;
+    document.getElementById("energy").style.width = d.energy+"%";
 }
 
-/* Tap */
-async function tap(){
-    await fetch('/tap',{
+/* TAP */
+async function tap(e){
+    let r = await fetch('/tap',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({user_id})
     });
+    let d = await r.json();
+
+    if(d.gain > 0){
+        navigator.vibrate(20);
+
+        let el = document.createElement("div");
+        el.className="float";
+        el.innerText="+"+d.gain;
+        el.style.left=e.clientX+"px";
+        el.style.top=e.clientY+"px";
+        document.body.appendChild(el);
+
+        setTimeout(()=>el.remove(),1000);
+    }
 }
 
-/* Upgrade */
+/* UPGRADE */
 async function upgrade(){
     await fetch('/upgrade',{
         method:'POST',
@@ -141,7 +170,7 @@ async function upgrade(){
     });
 }
 
-/* Loop */
+/* LOOP */
 setInterval(sync, 1000);
 sync();
 </script>
