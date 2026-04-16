@@ -1,56 +1,113 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mining App</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            background: #0f172a;
-            color: white;
-            font-family: sans-serif;
-            text-align: center;
-            padding-top: 50px;
-        }
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mining App</title>
 
-        h1 {
-            font-size: 28px;
-        }
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-        #balance {
-            font-size: 40px;
-            margin: 20px;
-        }
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: linear-gradient(135deg, #0f172a, #020617);
+    color: white;
+    text-align: center;
+}
 
-        button {
-            padding: 20px 40px;
-            font-size: 20px;
-            border: none;
-            border-radius: 10px;
-            background: #22c55e;
-            color: white;
-        }
-    </style>
+/* Glass card */
+.card {
+    margin: 40px 20px;
+    padding: 20px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+}
+
+/* Balance */
+.balance {
+    font-size: 45px;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+/* Button */
+.mine-btn {
+    margin-top: 40px;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    border: none;
+    font-size: 20px;
+    color: white;
+    background: radial-gradient(circle, #22c55e, #15803d);
+    box-shadow: 0 0 40px rgba(34,197,94,0.6);
+    transition: 0.1s;
+}
+
+.mine-btn:active {
+    transform: scale(0.9);
+    box-shadow: 0 0 20px rgba(34,197,94,0.9);
+}
+
+/* Username */
+.user {
+    opacity: 0.7;
+    margin-top: 5px;
+}
+</style>
 </head>
+
 <body>
 
-<h1>⛏ Mining App</h1>
-<div id="balance">0</div>
+<div class="card">
+    <h2>⚡ Mining Dashboard</h2>
+    <div class="user" id="user"></div>
+    <div class="balance" id="balance">0</div>
+</div>
 
-<button onclick="mine()">TAP TO MINE</button>
+<button class="mine-btn" onclick="mine()">⛏ TAP</button>
 
 <script>
+const tg = window.Telegram.WebApp;
+tg.expand();
+
+const user = tg.initDataUnsafe?.user;
+
+// tampilkan user
+document.getElementById("user").innerText =
+    user ? "@" + user.username : "Guest";
+
 async function loadBalance() {
-    let res = await fetch('/balance');
+    let res = await fetch('/balance', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            user_id: user?.id
+        })
+    });
+
     let data = await res.json();
     document.getElementById('balance').innerText = data.balance;
 }
 
 async function mine() {
-    let res = await fetch('/mine', {method: 'POST'});
+    // animasi getar kecil
+    navigator.vibrate(50);
+
+    let res = await fetch('/mine', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            user_id: user?.id
+        })
+    });
+
     let data = await res.json();
     document.getElementById('balance').innerText = data.balance;
 }
 
+// load awal
 loadBalance();
 </script>
 
