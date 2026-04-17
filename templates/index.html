@@ -1,64 +1,64 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mining App</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
-    margin: 0;
-    font-family: 'Inter', sans-serif;
-    background: radial-gradient(circle at top, #0f172a, #020617);
-    color: white;
+    margin:0;
+    font-family: Arial;
+    background: linear-gradient(135deg,#0f172a,#020617);
+    color:white;
 }
 
 .container {
-    padding: 20px;
+    padding:20px;
 }
 
 .card {
     background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(15px);
-    border-radius: 20px;
-    padding: 20px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(255,255,255,0.1);
+    border-radius:20px;
+    padding:20px;
+    margin-bottom:15px;
+    backdrop-filter: blur(10px);
 }
 
 .balance {
-    font-size: 32px;
-    font-weight: bold;
-    background: linear-gradient(90deg,#22c55e,#4ade80);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-size:30px;
+    font-weight:bold;
 }
 
-.rate {
-    color: #38bdf8;
+button {
+    width:100%;
+    padding:15px;
+    border:none;
+    border-radius:12px;
+    margin-top:10px;
+    font-size:16px;
 }
 
-.button {
-    background: linear-gradient(135deg,#3b82f6,#9333ea);
-    padding: 15px;
-    text-align: center;
-    border-radius: 14px;
-    margin-top: 15px;
-    cursor: pointer;
-    transition: 0.2s;
-    box-shadow: 0 0 20px rgba(147,51,234,0.4);
+.tap {
+    background:#22c55e;
 }
 
-.button:hover {
-    transform: scale(1.05);
+.upgrade {
+    background:#3b82f6;
 }
 
-.glow {
-    text-shadow: 0 0 10px #22c55e, 0 0 20px #22c55e;
+.energy {
+    height:10px;
+    background:#1e293b;
+    border-radius:10px;
+    overflow:hidden;
 }
 
+.energy-bar {
+    height:100%;
+    background:#22c55e;
+}
 </style>
 </head>
 
@@ -66,46 +66,88 @@ body {
 
 <div class="container">
 
-    <div class="card">
-        <div>💰 Balance</div>
-        <div class="balance glow" id="balance">0.000000</div>
-    </div>
+<div class="card">
+    <div>Balance</div>
+    <div class="balance" id="balance">0</div>
+</div>
 
-    <div class="card">
-        <div>⚡ Mining Speed</div>
-        <div class="rate" id="rate">+0.00005/sec</div>
+<div class="card">
+    <div>Energy</div>
+    <div class="energy">
+        <div class="energy-bar" id="energyBar"></div>
     </div>
+</div>
 
-    <div class="card">
-        <div class="button" onclick="startMining()">🚀 Start Mining</div>
-        <div class="button" onclick="upgrade()">⬆ Upgrade Miner</div>
-    </div>
+<div class="card">
+    <canvas id="chart"></canvas>
+</div>
+
+<div class="card">
+    <button class="tap" onclick="tap()">⛏ Tap Mining</button>
+    <button class="upgrade" onclick="upgrade()">⬆ Upgrade</button>
+</div>
 
 </div>
 
 <script>
+let user_id = Math.floor(Math.random()*1000000)
+let chartData = []
 
-let mining = false;
-let balance = 0;
-let speed = 0.00005;
-let multiplier = 1;
+const ctx = document.getElementById('chart')
 
-function startMining(){
-    mining = true;
-}
-
-setInterval(() => {
-    if(mining){
-        balance += speed * multiplier;
-        document.getElementById("balance").innerText = balance.toFixed(6);
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [{
+            label: 'Balance',
+            data: [],
+            borderColor: '#22c55e',
+            tension: 0.4
+        }]
     }
-}, 1000);
+})
 
-function upgrade(){
-    multiplier += 0.5;
-    document.getElementById("rate").innerText = "+" + (speed * multiplier).toFixed(6) + "/sec";
+async function sync() {
+    let res = await fetch('/sync', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({user_id})
+    })
+
+    let data = await res.json()
+
+    document.getElementById("balance").innerText = data.balance
+    document.getElementById("energyBar").style.width = data.energy + "%"
+
+    chart.data.labels.push('')
+    chart.data.datasets[0].data.push(data.balance)
+
+    if(chart.data.labels.length > 20){
+        chart.data.labels.shift()
+        chart.data.datasets[0].data.shift()
+    }
+
+    chart.update()
 }
 
+async function tap(){
+    await fetch('/tap',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({user_id})
+    })
+}
+
+async function upgrade(){
+    await fetch('/upgrade',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({user_id})
+    })
+}
+
+setInterval(sync,1000)
 </script>
 
 </body>
