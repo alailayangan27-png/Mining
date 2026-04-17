@@ -7,17 +7,14 @@ app = Flask(__name__)
 users = {}
 
 MAX_ENERGY = 100
-REGEN_RATE = 8          # lebih cepat tapi curve
-BASE_RATE = 0.03        # passive income
+REGEN_RATE = 6
+BASE_RATE = 0.02
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
-@app.route("/sync", methods=["POST"])
-def sync():
-    user_id = str(request.json.get("user_id"))
-
+def get_user(user_id):
     if user_id not in users:
         users[user_id] = {
             "balance": 0,
@@ -26,24 +23,28 @@ def sync():
             "level": 1,
             "multiplier": 1.0
         }
+    return users[user_id]
 
-    u = users[user_id]
+@app.route("/sync", methods=["POST"])
+def sync():
+    user_id = str(request.json.get("user_id"))
+    u = get_user(user_id)
 
     now = time.time()
     dt = now - u["last"]
 
-    # ⚡ NON-LINEAR ENERGY REGEN
+    # ENERGY REGEN (SMOOTH)
     regen = REGEN_RATE * (1 - (u["energy"]/MAX_ENERGY)**2)
     u["energy"] = min(MAX_ENERGY, u["energy"] + regen * dt)
 
-    # ⛏ PASSIVE MINING
+    # PASSIVE MINING
     passive = dt * BASE_RATE * u["level"] * u["multiplier"]
     u["balance"] += passive
 
     u["last"] = now
 
     return jsonify({
-        "balance": round(u["balance"], 3),
+        "balance": round(u["balance"], 4),
         "energy": int(u["energy"]),
         "level": u["level"]
     })
@@ -51,23 +52,20 @@ def sync():
 @app.route("/tap", methods=["POST"])
 def tap():
     user_id = str(request.json.get("user_id"))
-    u = users[user_id]
+    u = get_user(user_id)
 
     if u["energy"] > 5:
         u["energy"] -= 5
-
-        # burst reward (lebih besar dari idle)
         reward = (2 + math.sqrt(u["level"])) * u["multiplier"]
         u["balance"] += reward
-
-        return jsonify({"gain": round(reward,2)})
+        return jsonify({"gain": round(reward, 2)})
 
     return jsonify({"gain": 0})
 
 @app.route("/upgrade", methods=["POST"])
 def upgrade():
     user_id = str(request.json.get("user_id"))
-    u = users[user_id]
+    u = get_user(user_id)
 
     cost = (u["level"] ** 2) * 25
 
@@ -78,5 +76,5 @@ def upgrade():
 
     return jsonify({
         "level": u["level"],
-        "balance": round(u["balance"],2)
+        "balance": round(u["balance"], 2)
     })
