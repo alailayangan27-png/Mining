@@ -4,14 +4,12 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# database sederhana
 users = {}
 
 @app.route("/")
 def home():
     return "API RUNNING"
 
-# simpan deposit
 @app.route("/deposit", methods=["POST"])
 def deposit():
     user_id = request.json.get("user_id")
@@ -22,13 +20,10 @@ def deposit():
 
     users[user_id]["total"] += amount
 
-    return jsonify({
-        "total": users[user_id]["total"]
-    })
+    return jsonify(users[user_id])
 
-# ambil data user
 @app.route("/user", methods=["POST"])
-def get_user():
+def user():
     user_id = request.json.get("user_id")
 
     if user_id not in users:
