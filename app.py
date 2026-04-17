@@ -1,8 +1,10 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 import time
 import math
 
 app = Flask(__name__)
+CORS(app)
 
 users = {}
 
@@ -12,7 +14,7 @@ BASE_RATE = 0.02
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return "API RUNNING"
 
 def get_user(user_id):
     if user_id not in users:
@@ -33,11 +35,9 @@ def sync():
     now = time.time()
     dt = now - u["last"]
 
-    # ENERGY REGEN (SMOOTH)
     regen = REGEN_RATE * (1 - (u["energy"]/MAX_ENERGY)**2)
     u["energy"] = min(MAX_ENERGY, u["energy"] + regen * dt)
 
-    # PASSIVE MINING
     passive = dt * BASE_RATE * u["level"] * u["multiplier"]
     u["balance"] += passive
 
