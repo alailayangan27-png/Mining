@@ -1,178 +1,111 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<title>Mining App</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
-body{
-    margin:0;
-    background:#05070d;
-    font-family: Inter, sans-serif;
-    color:white;
+body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background: radial-gradient(circle at top, #0f172a, #020617);
+    color: white;
 }
 
-/* HEADER */
-.top{
-    padding:20px;
-    font-size:14px;
-    opacity:0.6;
+.container {
+    padding: 20px;
 }
 
-/* BALANCE */
-.balance{
-    font-size:48px;
-    font-weight:700;
-    padding:0 20px;
+.card {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
 }
 
-/* ENERGY BAR */
-.energy{
-    margin:15px 20px;
-    height:6px;
-    background:#111;
-    border-radius:10px;
-}
-.energy-fill{
-    height:100%;
-    width:0%;
-    background:linear-gradient(90deg,#00ffa3,#00c3ff);
-    border-radius:10px;
+.balance {
+    font-size: 32px;
+    font-weight: bold;
+    background: linear-gradient(90deg,#22c55e,#4ade80);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
-/* MINER CORE */
-.core{
-    width:200px;
-    height:200px;
-    margin:40px auto;
-    border-radius:50%;
-    background: radial-gradient(circle,#00ffa3,#002f2a);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:20px;
-    box-shadow:0 0 60px rgba(0,255,150,0.3);
-    transition:.1s;
+.rate {
+    color: #38bdf8;
 }
 
-.core:active{
-    transform:scale(0.92);
+.button {
+    background: linear-gradient(135deg,#3b82f6,#9333ea);
+    padding: 15px;
+    text-align: center;
+    border-radius: 14px;
+    margin-top: 15px;
+    cursor: pointer;
+    transition: 0.2s;
+    box-shadow: 0 0 20px rgba(147,51,234,0.4);
 }
 
-/* FLOAT TEXT */
-.float{
-    position:absolute;
-    color:#00ffa3;
-    font-weight:bold;
-    animation: floatUp 1s forwards;
-}
-@keyframes floatUp{
-    to{
-        transform:translateY(-50px);
-        opacity:0;
-    }
+.button:hover {
+    transform: scale(1.05);
 }
 
-/* CARD */
-.card{
-    margin:20px;
-    padding:15px;
-    background:#0f141c;
-    border-radius:12px;
+.glow {
+    text-shadow: 0 0 10px #22c55e, 0 0 20px #22c55e;
 }
-button{
-    width:100%;
-    padding:12px;
-    border:none;
-    border-radius:10px;
-    background:#00ffa3;
-}
+
 </style>
 </head>
 
 <body>
 
-<div class="top" id="user"></div>
+<div class="container">
 
-<div class="balance" id="balance">0.000</div>
+    <div class="card">
+        <div>💰 Balance</div>
+        <div class="balance glow" id="balance">0.000000</div>
+    </div>
 
-<div class="energy">
-    <div class="energy-fill" id="energy"></div>
-</div>
+    <div class="card">
+        <div>⚡ Mining Speed</div>
+        <div class="rate" id="rate">+0.00005/sec</div>
+    </div>
 
-<div class="core" onclick="tap(event)">MINE</div>
+    <div class="card">
+        <div class="button" onclick="startMining()">🚀 Start Mining</div>
+        <div class="button" onclick="upgrade()">⬆ Upgrade Miner</div>
+    </div>
 
-<div class="card">
-    Level <span id="level">1</span>
-    <button onclick="upgrade()">Upgrade</button>
 </div>
 
 <script>
-const tg = window.Telegram.WebApp;
-tg.expand();
 
-const user = tg.initDataUnsafe?.user;
-let user_id = user ? user.id : 1;
+let mining = false;
+let balance = 0;
+let speed = 0.00005;
+let multiplier = 1;
 
-document.getElementById("user").innerText =
-    user ? "@"+user.username : "Guest";
-
-/* SMOOTH BALANCE */
-let shown = 0;
-function updateBalance(target){
-    shown += (target - shown)*0.15;
-    document.getElementById("balance").innerText = shown.toFixed(3);
+function startMining(){
+    mining = true;
 }
 
-/* SYNC LOOP */
-async function sync(){
-    let r = await fetch('/sync',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({user_id})
-    });
-    let d = await r.json();
-
-    updateBalance(d.balance);
-    document.getElementById("level").innerText = d.level;
-    document.getElementById("energy").style.width = d.energy+"%";
-}
-
-/* TAP */
-async function tap(e){
-    let r = await fetch('/tap',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({user_id})
-    });
-    let d = await r.json();
-
-    if(d.gain > 0){
-        navigator.vibrate(20);
-
-        let el = document.createElement("div");
-        el.className="float";
-        el.innerText="+"+d.gain;
-        el.style.left=e.clientX+"px";
-        el.style.top=e.clientY+"px";
-        document.body.appendChild(el);
-
-        setTimeout(()=>el.remove(),1000);
+setInterval(() => {
+    if(mining){
+        balance += speed * multiplier;
+        document.getElementById("balance").innerText = balance.toFixed(6);
     }
+}, 1000);
+
+function upgrade(){
+    multiplier += 0.5;
+    document.getElementById("rate").innerText = "+" + (speed * multiplier).toFixed(6) + "/sec";
 }
 
-/* UPGRADE */
-async function upgrade(){
-    await fetch('/upgrade',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({user_id})
-    });
-}
-
-/* LOOP */
-setInterval(sync, 1000);
-sync();
 </script>
 
 </body>
